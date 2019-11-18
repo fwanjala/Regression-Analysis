@@ -1,0 +1,335 @@
+---
+title: "Regression Analysis"
+author: "Fridah Wanjala, M-Kopa Solar"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+--- 
+
+# Introduction
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+library(tidyverse)
+library(data.table)
+library(knitr)
+library(AER)
+library(kableExtra)
+library(gridExtra)
+library(GGally)
+```
+
+In this session we will discuss some of the different types of regression models in statistics. I will use R to demonstrate but this doesn't mean that you cannot replicate the results in Python.
+
+There are four different types of analytics that help the business make decisions:
+
+* **Descriptive** : What happened in the past? Data visualizations - BI.
+
+* **Diagnostic** : Why did this happen? Correlations, statistical models
+
+* **Predictive** : Use historical data to forecast the future. Use machine learning models
+
+* **Prescriptive** : Define the course of action now that we have a forecast. An example would be if we predict more customer calls in the future, we will hire more customer care staff.
+
+Today, we will be focussing on diagnostic analytics. 
+
+---
+# Why regressions?
+
+When we want to analyze the relationship between between an outcome and one or more predictors. 
+
+Once you define your research hypothesis, the next step is to select the appropriate statistical method for analysis. 
+
+Well, what criteria will you use to select a statistical method?
+
+
+* Type of study : cross sectional or panel
+
+* Type of the outcome variable : is it continous or categorical
+
+* Number and type of predictors
+
+* Model assumptions
+
+---
+## State the statistical model
+Given the following research hypothesis, state the appropriate statistical method.
+
+--
+* Gender is related to smoking behaviour
+
+--
+**Chi-square test of association**
+
+--
+* Alcoholics weight less compared to non-alcoholics
+
+--
+**Un-paired T-test**
+
+--
+* People at different levels of education earn differently
+
+--
+**One-way ANOVA**
+
+--
+* The test score of a student is related to their gender and socio economic status
+
+--
+**Linear regression**
+
+--
+* Loan default is related to the applicant's socio economic status, age and location of their residence.
+
+--
+**Binary logistic regression**
+
+--
+
+In todays session, we will focus on linear and logistic regression.
+
+---
+
+## Description of the dataset
+We will use dataset containing data on test performance, school characteristics and student demographic backgrounds.
+
+A data frame containing 420 observations on 14 variables.
+
+* `district` District code.
+* `school` School name.
+* `county` factor indicating county.
+* `grades` factor indicating grade span of district.
+* `students` Total enrollment.
+* `teachers` Number of teachers.
+* `calworks` Percent qualifying for CalWorks (income assistance).
+* `lunch` Percent qualifying for reduced-price lunch.
+* `computer` Number of computers.
+* `expenditure` Expenditure per student.
+* `income` District average income (in USD 1,000).
+* `english` Percent of English learners.
+* `read` Average reading score.
+* `math` Average math score.
+
+---
+## Linear regression
+
+The aim is to model a continous outcome variables as a linear combination of one or more predictor variables (**X**). The mathematical formaulation fo the model is as follows:
+
+$$Y_{i} = \beta_{0} + \beta_{1}X + \epsilon_{i}$$
+
+Where
+* $\beta_{0}$ is the intercept and,
+
+* $\beta_{1}$ is the intercept is the slope.
+
+These are called regression coefficients 
+
+* $\epsilon_{i}$ is the error term/residual, whatever the model is unable to explain.
+
+---
+### What is our research objective?
+The aim is to find a line of best fit such that the deviations from the line to the actual values is as minimal as possible.
+
+The estimated regression coefficients, are those that minimise the sum of the squared errors, that is:
+
+$$\sum_{i}(Y_{i}-\hat{Y_{i}})^{2} = \sum_{i}\epsilon_{i}^{2}$$
+
+This is what we call the **method of least squares**.
+
+Our objective is to find out factors that are related a school's math test score.
+
+![](C:/Users/fridah.wanjala/Documents/Mine/Mentorship/Moringa/Session2/linearfit.png)
+---
+### Assumptions of the linear regression model
+
+* The error terms should be normally distributed: Shapiro Wilk test, qqplot 
+
+* No outliers : Use boxplots, histograms and Cook Distance
+
+* The error terms are independent. 
+
+* There exists a linear relationship between Y and X: Scatter plots of residuals vs X
+
+* The error terms should have a constant variance. Plot of residual vs X (random patetrn expected)
+
+If these assumptions are violated, the validity of the regression results is compromised. 
+
+There are ways for correcting for these violations such as log transforming the outcome to correct for non-normalit. We will however not discuss them today.
+
+---
+
+### Bivariate relationship between the outcome and the predictors
+First and foremost, it is important to get a sense of the relationship between the outcome and predictor variables before we begin modelling.
+
+* For continous variables we can use scatter plots. Look out for multicollinearity.
+
+* For categorical variables we can use bar plots with means and error bars for each of the categories
+
+Insights from the graph in the next page:
+
+* Total enrolment, number of teachers and number of computers show high levels of multicollinearity.
+
+* Percent qualifying for reduced-price lunch and the average reading score also show high level of multicollineary.
+
+* The outcome (average math score) is correlated with the reading score, Percent qualifying for reduced-price lunch and expenditure.
+
+* From the barplot, there seems to be no difference in the average math score between the two grades.
+
+---
+class: inverse, center, middle
+
+```{r, echo=FALSE, message=FALSE}
+data("CASchools")
+
+CASchools %>%
+    select_if(is.numeric) %>%
+    ggpairs(upper = "blank",
+            diag  = list(continuous = wrap("densityDiag", alpha = 0.5)))
+
+```
+
+---
+class: inverse, center, middle
+
+```{r, echo=FALSE, message=FALSE}
+grades_tbl <- Rmisc::summarySE(CASchools, 
+                           measurevar = "math",
+                           groupvars = "grades")
+
+# Error bars represent standard error of the mean
+ggplot(grades_tbl, aes(x = grades, y = math, fill = grades)) + 
+    geom_bar(position = position_dodge(), stat = "identity") +
+   geom_errorbar(aes(ymin = math - ci, ymax = math + ci),
+                  width = .2,                   
+                  position = position_dodge(.9)) +
+  theme_classic() +
+  theme(legend.title = element_blank(),
+        legend.position = "bottom")
+  
+```
+
+---
+### Linear regression model
+* $R^{2} = 86.7\%$ - The variables explain 87% of the variability in the math score. 
+
+* Expenditure, the average reading score, income and number of english teachers have a significant relationship with the math score. 
+
+```{r,echo = FALSE, warning=FALSE, message=FALSE}
+lm_model <- lm(math ~ ., 
+               data = CASchools %>% select(-district, -school, -county))
+
+lm_model_tidy <- broom::tidy(lm_model) %>%
+  select(term, estimate, p.value) %>%
+  mutate_at(vars(estimate, p.value), function(x) return(round(x, 3)))
+
+knitr::kable(lm_model_tidy, 
+             format.args = list(big.mark = ",")) %>%
+  kable_styling(bootstrap_options = "striped", full_width = F)
+```
+
+---
+### Cheking the nomality assumption.
+
+* The residuals are normally distributed. The shapiro Wilk test is not significant and the points on the plot fall on the middle line even though thre are some extreme values at both ends.
+
+```{r,echo = FALSE, warning=FALSE, message=FALSE}
+car::qqPlot(lm_model)
+shapiro.test(lm_model$residuals)
+
+```
+
+---
+
+## Logistic regression
+
+This is aregression model where the outcome is categorical, that is contains a finite number of distinct values. The regression model used depends on the type of categorical variables and the number of categories.
+
+* Ordinal (2 groups) - binary logistic regression model
+
+* Ordinal (> 2 groups) - ordered lostic regresion model
+
+* Nominal - Mutinomial logistic model.
+
+We define out outcome variable as 1 = if the math score greater than or equal to the mean and o otherwise. This outcome variable follows a binomial distribution (has a Success and a failure).
+
+---
+### Model formulation
+Success is denoted by $\pi$ while a failure is denoted by a ($1-\pi$). Therefore the logistic regression model takes the form:
+
+$$log(\frac{\pi(x)}{1-\pi(x)}) = \alpha + \beta x = logit(\pi) = log(odds)$$
+
+The link function is the logit transformation. 
+
+Important note:
+
+* $\pi$ is restricted to 0 and 1
+
+* but $logit(\pi)$ can take any real value and can therefore be modelled.
+
+
+Another link function is the probit (the inverse standard normal cumulative distribution). The coefficiencts of the logistic regression model are intepreted using odds ratios and therefore easier compared to the probit coefficients.
+
+---
+### What is an odds ratio?
+Represents the odds that an outcome will occur given a particular exposure, compared to the odds of the outcome in the absence of that exposure. **Example**: Suppose in a population of 50 men and 50 women, 30 men and 10 women are found to smoke. Therefore;
+
+$$\pi (men) = \frac{30}{50} = 0.6$$
+
+$$\pi (women) = \frac{10}{50} = 0.2$$
+
+$$Odds \> of \> smoking (men) = \frac{\pi (men)}{1-\pi(men)} = \frac{0.6}{0.4} = 1.5$$
+
+$$Odds \> of \> smoking (women) = \frac{\pi (women)}{1-\pi(women)} = \frac{0.2}{0.8} = 0.4$$
+
+$$Odds ratio = \frac{Odds(men)}{Odds(women)} = 3.75$$
+
+The odds of smoking for males is 3.75 times that of females. This implies males are more likely to smoke compared to females.
+
+---
+### Fit the model
+The model outputs coefficients are in log odds format and for ease of interpretation, they are converted using the exponent transformation.
+
+```{r,echo = FALSE, warning=FALSE, message=FALSE}
+CASchools <- CASchools %>%
+  mutate(math_cat = ifelse(math >= mean(math), 1, 0))
+
+logit_model <- glm(math_cat ~ ., 
+                   data = CASchools %>% select(-district, -school, -county, -math),
+                   family = "binomial")
+
+tidy_model <- broom::tidy((logit_model)) %>%
+  select(term, estimate, p.value) %>%
+  mutate(estimate = exp(estimate)) %>%
+  mutate_at(vars(estimate, p.value), function(x) return(round(x, 3)))
+
+knitr::kable(tidy_model, 
+             format.args = list(big.mark = ",")) %>%
+  kable_styling(bootstrap_options = "striped", full_width = F)
+```
+
+* An increase in the reading score by 1, increases the odds of getting of math score above the mean by a factor of 1.25.
+
+---
+## Other types of regressions
+Sometimes, when you have a dataset with alarge number of variables, the standard models perform poor poorly. 
+
+A better alternative is the **penalized regression** which shrinks coefficients with a minor contribution towards zero. This requires the selection of a tuning parameter (lambda) that determines the amount of shrinkage.
+
+Examples of **shrinkage/regularization methods**
+
+* Ridge : The coefficients are penalized using a penalty term called **L2-Norm** which is the sum of the squared coefficients. All the variables are incorporated in the final model.
+
+* Lasso : Coefficients are shrunk towards 0 using a penalty term called **L1-Norm** which is the sum of absolute coeffiecients. Some variables are set exactly to zero. It produces a more simpler model compared to the ridge regression.
+
+* Elastic net : Combination of ridge and lasso regression.
+
+Note: Correlated predictors supply redudant information, therefore one should be should be drpped from the model. We have not dropped them in this tutorial though.
+
+---
+# Questions
